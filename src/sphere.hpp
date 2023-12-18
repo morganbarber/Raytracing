@@ -20,7 +20,7 @@ public:
             return false;
 
         // Find the nearest root that lies in the acceptable range.
-        auto sqrtd = sqrtf(discriminant);
+        auto sqrtd = sqrt(discriminant);
         auto root = (-half_b - sqrtd) / a;
         if (!ray_t.surrounds(root)) {
             root = (-half_b + sqrtd) / a;
