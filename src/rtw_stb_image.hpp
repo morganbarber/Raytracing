@@ -1,7 +1,6 @@
 #ifndef RTW_STB_IMAGE_H
 #define RTW_STB_IMAGE_H
 
-
 // Disable strict warnings for this header from the Microsoft Visual C++ compiler.
 #ifdef _MSC_VER
     #pragma warning (push, 0)
@@ -12,7 +11,8 @@
 
 #include <cstdlib>
 #include <iostream>
-
+#include <string>
+#include <vector>
 
 class rtw_image {
   public:
@@ -26,28 +26,34 @@ class rtw_image {
         // parent, on so on, for six levels up. If the image was not loaded successfully,
         // width() and height() will return 0.
 
-        auto filename = std::string(image_filename);
+        std::vector<std::string> searchPaths;
         auto imagedir = getenv("RTW_IMAGES");
+        if (imagedir) {
+            searchPaths.push_back(std::string(imagedir) + "/" + image_filename);
+        }
+        searchPaths.push_back(image_filename);
+        searchPaths.push_back("images/" + std::string(image_filename));
+        searchPaths.push_back("../images/" + std::string(image_filename));
+        searchPaths.push_back("../../images/" + std::string(image_filename));
+        searchPaths.push_back("../../../images/" + std::string(image_filename));
+        searchPaths.push_back("../../../../images/" + std::string(image_filename));
+        searchPaths.push_back("../../../../../images/" + std::string(image_filename));
+        searchPaths.push_back("../../../../../../images/" + std::string(image_filename));
 
-        // Hunt for the image file in some likely locations.
-        if (imagedir && load(std::string(imagedir) + "/" + image_filename)) return;
-        if (load(filename)) return;
-        if (load("images/" + filename)) return;
-        if (load("../images/" + filename)) return;
-        if (load("../../images/" + filename)) return;
-        if (load("../../../images/" + filename)) return;
-        if (load("../../../../images/" + filename)) return;
-        if (load("../../../../../images/" + filename)) return;
-        if (load("../../../../../../images/" + filename)) return;
+        for (const auto& path : searchPaths) {
+            if (load(path)) {
+                return;
+            }
+        }
 
         std::cerr << "ERROR: Could not load image file '" << image_filename << "'.\n";
     }
 
     ~rtw_image() { STBI_FREE(data); }
 
-    bool load(const std::string filename) {
+    bool load(const std::string& filename) {
         // Loads image data from the given file name. Returns true if the load succeeded.
-        auto n = bytes_per_pixel; // Dummy out parameter: original components per pixel
+        int n = bytes_per_pixel; // Dummy out parameter: original components per pixel
         data = stbi_load(filename.c_str(), &image_width, &image_height, &n, bytes_per_pixel);
         bytes_per_scanline = image_width * bytes_per_pixel;
         return data != nullptr;
@@ -64,28 +70,25 @@ class rtw_image {
         x = clamp(x, 0, image_width);
         y = clamp(y, 0, image_height);
 
-        return data + y*bytes_per_scanline + x*bytes_per_pixel;
+        return data + y * bytes_per_scanline + x * bytes_per_pixel;
     }
 
   private:
-    const int bytes_per_pixel = 3;
-    unsigned char *data;
-    int image_width, image_height;
-    int bytes_per_scanline;
+    static constexpr int bytes_per_pixel = 3;
+    unsigned char* data = nullptr;
+    int image_width = 0;
+    int image_height = 0;
+    int bytes_per_scanline = 0;
 
     static int clamp(int x, int low, int high) {
         // Return the value clamped to the range [low, high).
-        if (x < low) return low;
-        if (x < high) return x;
-        return high - 1;
+        return std::clamp(x, low, high - 1);
     }
 };
-
 
 // Restore MSVC compiler warnings
 #ifdef _MSC_VER
     #pragma warning (pop)
 #endif
-
 
 #endif
